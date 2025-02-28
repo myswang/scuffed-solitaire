@@ -233,7 +233,7 @@ local function handle_tableau(stack)
 end
 
 local function update_prev()
-    if prev_stack ~= nil and prev_key == "tableau" and #prev_stack.cards > 0 then
+    if prev_stack ~= nil and prev_key == "tableau" and #prev_stack.cards > 0 and not prev_stack.cards[#prev_stack.cards].visible then
         prev_stack.cards[#prev_stack.cards].visible = true
         return true
     end
@@ -264,7 +264,7 @@ local function undo()
             end
         elseif action[1] == "flip" then
             local src = action[2]
-            src.cards[#src.cards].visible = false
+            src.cards[#src.cards].visible = not src.cards[#src.cards].visible
         elseif action[1] == "redeal" then
             for j = #stock[1].cards, 1, -1 do
                 table.insert(stock[2].cards, stock[1].cards[j])
