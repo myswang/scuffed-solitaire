@@ -11,6 +11,10 @@ cd scuffed-solitaire
 love .
 ```
 
+## Controls
+
+- U: Undo most recent move
+
 ## TODO
 
 - Undo/New game buttons
