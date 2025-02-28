@@ -41,6 +41,8 @@ local prev_key = nil
 local cur_stack = nil
 local pressed = false
 
+local undo_log = {}
+
 local function get_stack_area(stack)
     if stack.fanout then
         return card_width, card_height + fanout_spacing * #stack.cards
@@ -71,9 +73,9 @@ local function grab_stack(x, y, stack)
                     table.insert(stock[2].cards, table.remove(stack.cards))
                     stock[2].cards[#stock[2].cards].visible = true
                 else
-                    for _, card in ipairs(stock[2].cards) do
-                        table.insert(stack.cards, card)
-                        card.visible = false
+                    for i = #stock[2].cards, 1, -1 do
+                        table.insert(stack.cards, stock[2].cards[i])
+                        stock[2].cards[i].visible = false
                     end
                     stock[2].cards = {}
                 end
@@ -223,8 +225,6 @@ end
 local function update_prev()
     if prev_stack ~= nil and prev_key == "tableau" and #prev_stack.cards > 0 then
         prev_stack.cards[#prev_stack.cards].visible = true
-    elseif prev_stack ~= nil and prev_key == "foundation" and #prev_stack.cards == 0 then
-        prev_stack.suit = nil
     end
 end
 
@@ -241,29 +241,38 @@ function love.mousereleased(_, _, button)
         get_dists(candidates, foundation, "foundation")
         get_dists(candidates, tableau, "tableau")
         table.sort(candidates, function(a, b) return a[1] < b[1] end)
-        local good = false
+        local dest = nil
+        local dest_kind = nil
+
         if #candidates > 0 then
             for _, c in ipairs(candidates) do
                 if c[3] == "foundation" then
                     local stack = foundation[c[2]]
-                    if #cur_stack.cards == 1 and handle_foundation(stack) then
+                    if stack ~= prev_stack and #cur_stack.cards == 1 and handle_foundation(stack) then
                         update_prev()
-                        good = true
+                        dest = stack
+                        dest_kind = c[3]
                         break
                     end
                 elseif c[3] == "tableau" then
                     local stack = tableau[c[2]]
-                    if handle_tableau(stack) then
+                    if stack ~= prev_stack and handle_tableau(stack) then
                         update_prev()
-                        good = true
+                        dest = stack
+                        dest_kind = c[3]
                         break
                     end
                 end
             end
         end
 
-        if not good then
+        if dest == nil then
             reset_stacks()
+        else
+            table.insert(undo_log, { source=prev_stack, stack=cur_stack, dest=dest , source_kind=prev_key, dest_kind=dest_kind})
+            for _, line in ipairs(undo_log) do
+                print(line.source_kind, line.dest_kind)
+            end
         end
         cur_stack = nil
         prev_stack = nil
@@ -281,7 +290,7 @@ end
 
 local function draw_card(cx, cy, card)
     if card == nil then return end
-    local x, y = 3, 4
+    local x, y = 3, 5
     if card.visible then
         x, y = card.rank, card.suit
     end
