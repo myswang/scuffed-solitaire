@@ -7,9 +7,12 @@
 
 ```bash
 git clone https://github.com/myswang/scuffed-solitaire.git
-cd scuffed-solitaire
-love .
+love scuffed-solitaire
 ```
+
+## Controls
+
+- U: Undo most recent move
 
 ## TODO
 
