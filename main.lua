@@ -7,6 +7,10 @@ local stack_spacing = 20
 
 local blank = { rank = 12, suit = 4, visible = true }
 local cards = {}
+local card_quads = {}
+local blank_quad = love.graphics.newQuad(blank.rank * card_width, blank.suit * card_height, card_width, card_height, texture)
+local flip_quad = love.graphics.newQuad(3 * card_width, 4 * card_height, card_width, card_height, texture)
+local sprite_batch = love.graphics.newSpriteBatch(texture)
 
 local stock = {
     { x = 10, y = 10, fanout = false, cards = cards },
@@ -71,7 +75,7 @@ local function grab_stack(x, y, stack)
             largest_idx = #stack.cards
         end
 
-
+        -- TODO: investigate spurious error: attempt to index a nil value
         if #stack.cards == 0 or (#stack.cards > 0 and not stack.cards[largest_idx].visible) then
             if stack == stock[1] then
                 local entry = {}
@@ -149,8 +153,10 @@ end
 local function restart_game()
     local pairs = {}
     for suit = 0, 3 do
+        table.insert(card_quads, {})
         for rank = 0, 12 do
             table.insert(pairs, {suit, rank})
+            table.insert(card_quads[#card_quads], love.graphics.newQuad(rank * card_width, suit * card_height, card_width, card_height, texture))
         end
     end
 
@@ -338,13 +344,13 @@ end
 
 local function draw_card(cx, cy, card)
     if card == nil then return end
-    local x, y = 3, 5
-    if card.visible then
-        x, y = card.rank, card.suit
+    local quad = flip_quad
+    if card == blank then
+        quad = blank_quad
+    elseif card.visible then
+        quad = card_quads[card.suit + 1][card.rank + 1]
     end
-    x, y = x * card_width, y * card_height
-    local quad = love.graphics.newQuad(x, y, card_width, card_height, texture)
-    love.graphics.draw(texture, quad, cx, cy)
+    sprite_batch:add(quad, cx, cy)
 end
 
 local function draw_stack(stack)
@@ -359,6 +365,7 @@ local function draw_stack(stack)
 end
 
 function love.draw()
+    sprite_batch:clear()
     for _, stack_group in pairs(stacks) do
         for _, stack in ipairs(stack_group) do
             if #stack.cards == 0 then
@@ -370,4 +377,6 @@ function love.draw()
     end
 
     draw_stack(cur_stack)
+    love.graphics.draw(sprite_batch)
+
 end
