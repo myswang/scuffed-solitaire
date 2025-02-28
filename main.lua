@@ -41,7 +41,12 @@ local prev_key = nil
 local cur_stack = nil
 local pressed = false
 
-local undo_log = {}
+-- each line is a series of actions that can be committed atomically
+-- examples below: 
+-- MOVE(3, src, dst) -> FLIP(src)
+-- MOVE(1, src, dst) -> FLIP(dst)
+-- REDEAL()
+local log = {}
 
 local function get_stack_area(stack)
     if stack.fanout then
@@ -67,18 +72,23 @@ local function grab_stack(x, y, stack)
         end
 
 
-        if #stack.cards == 0 or not stack.cards[largest_idx].visible then
+        if #stack.cards == 0 or (#stack.cards > 0 and not stack.cards[largest_idx].visible) then
             if stack == stock[1] then
+                local entry = {}
                 if #stack.cards > 0 then
                     table.insert(stock[2].cards, table.remove(stack.cards))
                     stock[2].cards[#stock[2].cards].visible = true
+                    table.insert(entry, { "move", 1, stack, stock[2] })
+                    table.insert(entry, { "flip", stock[2] })
                 else
                     for i = #stock[2].cards, 1, -1 do
                         table.insert(stack.cards, stock[2].cards[i])
                         stock[2].cards[i].visible = false
                     end
                     stock[2].cards = {}
+                    table.insert(entry, { "redeal" })
                 end
+                table.insert(log, entry)
                 return true
             end
             return false
@@ -225,13 +235,43 @@ end
 local function update_prev()
     if prev_stack ~= nil and prev_key == "tableau" and #prev_stack.cards > 0 then
         prev_stack.cards[#prev_stack.cards].visible = true
+        return true
     end
+    return false
 end
 
 local function reset_stacks()
     if cur_stack == nil or prev_stack == nil then return end
     for _, card in ipairs(cur_stack.cards) do
         table.insert(prev_stack.cards, card)
+    end
+end
+
+local function undo()
+    if #log == 0 then return end
+    local entry = table.remove(log)
+    for i = #entry, 1, -1 do
+        local action = entry[i]
+        if action[1] == "move" then
+            local count = action[2]
+            local src = action[3]
+            local dst = action[4]
+            for j = #dst.cards - count + 1, #dst.cards do
+                table.insert(src.cards, dst.cards[j])
+            end
+            for _ = #dst.cards - count + 1, #dst.cards do
+                table.remove(dst.cards)
+            end
+        elseif action[1] == "flip" then
+            local src = action[2]
+            src.cards[#src.cards].visible = false
+        elseif action[1] == "redeal" then
+            for j = #stock[1].cards, 1, -1 do
+                table.insert(stock[2].cards, stock[1].cards[j])
+                stock[1].cards[j].visible = true
+            end
+            stock[1].cards = {}
+        end
     end
 end
 
@@ -242,24 +282,31 @@ function love.mousereleased(_, _, button)
         get_dists(candidates, tableau, "tableau")
         table.sort(candidates, function(a, b) return a[1] < b[1] end)
         local dest = nil
-        local dest_kind = nil
 
         if #candidates > 0 then
             for _, c in ipairs(candidates) do
                 if c[3] == "foundation" then
                     local stack = foundation[c[2]]
                     if stack ~= prev_stack and #cur_stack.cards == 1 and handle_foundation(stack) then
-                        update_prev()
+                        local entry = {}
+                        table.insert(entry, { "move", 1, prev_stack, stack })
+                        if update_prev() then
+                            table.insert(entry, { "flip", prev_stack })
+                        end
                         dest = stack
-                        dest_kind = c[3]
+                        table.insert(log, entry)
                         break
                     end
                 elseif c[3] == "tableau" then
                     local stack = tableau[c[2]]
                     if stack ~= prev_stack and handle_tableau(stack) then
-                        update_prev()
+                        local entry = {}
+                        table.insert(entry, { "move", #cur_stack.cards, prev_stack, stack })
+                        if update_prev() then
+                            table.insert(entry, { "flip", prev_stack })
+                        end
                         dest = stack
-                        dest_kind = c[3]
+                        table.insert(log, entry)
                         break
                     end
                 end
@@ -268,11 +315,6 @@ function love.mousereleased(_, _, button)
 
         if dest == nil then
             reset_stacks()
-        else
-            table.insert(undo_log, { source=prev_stack, stack=cur_stack, dest=dest , source_kind=prev_key, dest_kind=dest_kind})
-            for _, line in ipairs(undo_log) do
-                print(line.source_kind, line.dest_kind)
-            end
         end
         cur_stack = nil
         prev_stack = nil
@@ -285,6 +327,12 @@ function love.mousemoved(_, _, dx, dy)
     if pressed and cur_stack ~= nil then
         cur_stack.x = cur_stack.x + dx
         cur_stack.y = cur_stack.y + dy
+    end
+end
+
+function love.keypressed(key)
+    if key == "u" then
+        undo()
     end
 end
 
