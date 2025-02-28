@@ -10,24 +10,24 @@ local cards = {}
 
 local stock = {
     { x = 10, y = 10, fanout = false, cards = cards },
-    { x = 10 + card_width + stack_spacing, y = 10, fanout = false, cards = {}}
+    { x = 10 + card_width + stack_spacing, y = 10, fanout = false, cards = {} }
 }
 
 local foundation = {
-    { x = 10 + (card_width + stack_spacing)*3, y = 10, fanout = false, cards = {}, suit = nil},
-    { x = 10 + (card_width + stack_spacing)*4, y = 10, fanout = false, cards = {}, suit = nil},
-    { x = 10 + (card_width + stack_spacing)*5, y = 10, fanout = false, cards = {}, suit = nil},
-    { x = 10 + (card_width + stack_spacing)*6, y = 10, fanout = false, cards = {}, suit = nil},
+    { x = 10 + (card_width + stack_spacing)*3, y = 10, fanout = false, cards = {} },
+    { x = 10 + (card_width + stack_spacing)*4, y = 10, fanout = false, cards = {} },
+    { x = 10 + (card_width + stack_spacing)*5, y = 10, fanout = false, cards = {} },
+    { x = 10 + (card_width + stack_spacing)*6, y = 10, fanout = false, cards = {} },
 }
 
 local tableau = {
     { x = 10, y = 10 + card_height + 5, fanout = true, cards = {}},
-    { x = 10 + card_width + stack_spacing, y = 10 + card_height + 5, fanout = true, cards = {}},
-    { x = 10 + (card_width + stack_spacing)*2, y = 10 + card_height + 5, fanout = true, cards = {}},
-    { x = 10 + (card_width + stack_spacing)*3, y = 10 + card_height + 5, fanout = true, cards = {}},
-    { x = 10 + (card_width + stack_spacing)*4, y = 10 + card_height + 5, fanout = true, cards = {}},
-    { x = 10 + (card_width + stack_spacing)*5, y = 10 + card_height + 5, fanout = true, cards = {}},
-    { x = 10 + (card_width + stack_spacing)*6, y = 10 + card_height + 5, fanout = true, cards = {}},
+    { x = 10 + card_width + stack_spacing, y = 10 + card_height + 5, fanout = true, cards = {} },
+    { x = 10 + (card_width + stack_spacing)*2, y = 10 + card_height + 5, fanout = true, cards = {} },
+    { x = 10 + (card_width + stack_spacing)*3, y = 10 + card_height + 5, fanout = true, cards = {} },
+    { x = 10 + (card_width + stack_spacing)*4, y = 10 + card_height + 5, fanout = true, cards = {} },
+    { x = 10 + (card_width + stack_spacing)*5, y = 10 + card_height + 5, fanout = true, cards = {} },
+    { x = 10 + (card_width + stack_spacing)*6, y = 10 + card_height + 5, fanout = true, cards = {} },
 }
 
 local stacks = {
