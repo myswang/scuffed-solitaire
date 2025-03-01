@@ -63,11 +63,11 @@ end
 local function grab_stack(x, y, stack)
     local sx, sy = get_stack_area(stack)
     if x >= stack.x and x <= stack.x+sx and y >= stack.y and y <= stack.y+sy then
-        local largest_idx = 0
+        local largest_idx = 1
         if stack.fanout then
             for i, _ in ipairs(stack.cards) do
                 local card_x, card_y = stack.x, stack.y + (i-1) * fanout_spacing
-                if x >= card_x and x <= card_x+card_width and y >= card_y and y <= card_y+card_height and i > largest_idx then
+                if x >= card_x and x <= card_x+card_width and y >= card_y and y <= card_y+card_height and i >= largest_idx then
                     largest_idx = i
                 end
             end
@@ -75,8 +75,7 @@ local function grab_stack(x, y, stack)
             largest_idx = #stack.cards
         end
 
-        -- TODO: investigate spurious error: attempt to index a nil value
-        if #stack.cards == 0 or (#stack.cards > 0 and not stack.cards[largest_idx].visible) then
+        if #stack.cards == 0 or not stack.cards[largest_idx].visible then
             if stack == stock[1] then
                 local entry = {}
                 if #stack.cards > 0 then
@@ -161,7 +160,7 @@ local function restart_game()
     end
 
     -- shuffle cards
-    local seed = math.randomseed(os.time())
+    math.randomseed(os.time())
     for i = #pairs, 2, -1 do
         local j = math.random(i)
         pairs[i], pairs[j] = pairs[j], pairs[i]
