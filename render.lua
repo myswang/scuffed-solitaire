@@ -1,5 +1,4 @@
 local Render = {}
-local objects = require("objects")
 local constants = require("constants")
 Render.__index = Render
 
@@ -40,7 +39,7 @@ function Render:add_stack(stack)
             self:add_card(card, stack.x, stack.y + (i-1) * constants.FANOUT_SPACING)
         end
     else
-        self:add_card(objects.Stack.get_last(stack), stack.x, stack.y)
+        self:add_card(stack:get_last(), stack.x, stack.y)
     end
 end
 

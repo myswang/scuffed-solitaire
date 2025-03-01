@@ -36,9 +36,10 @@ function Log:undo()
 end
 
 function Log:redo()
-    if self.idx < #self.log then
+    if self.idx <= #self.log then
+        local res = self.log[self.idx]
         self.idx = self.idx + 1
-        return self.log[self.idx]
+        return res
     end
 end
 

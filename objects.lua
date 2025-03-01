@@ -17,9 +17,8 @@ function Stack:new(x, y, fanout)
     local obj = setmetatable({}, self)
     obj.x = x
     obj.y = y
-    obj.sx = 0
-    obj.sy = 0
     obj.fanout = fanout
+    obj.sx, obj.sy = self.dimensions(self)
     obj.visible = true
     obj.cards = {}
     return obj
