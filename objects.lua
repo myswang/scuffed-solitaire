@@ -1,3 +1,4 @@
+local constants = require("constants")
 local Card = {}
 Card.__index = Card
 
@@ -6,6 +7,7 @@ function Card:new(rank, suit, visible)
     obj.rank = rank
     obj.suit = suit
     obj.visible = visible
+    return obj
 end
 
 local Stack = {}
@@ -15,8 +17,12 @@ function Stack:new(x, y, fanout)
     local obj = setmetatable({}, self)
     obj.x = x
     obj.y = y
+    obj.sx = 0
+    obj.sy = 0
     obj.fanout = fanout
+    obj.visible = true
     obj.cards = {}
+    return obj
 end
 
 function Stack:push(card)
@@ -35,6 +41,15 @@ function Stack:get_last()
     return self.cards[#self.cards]
 end
 
+function Stack:dimensions()
+    if self.fanout then
+        return constants.CARD_WIDTH,
+        constants.CARD_HEIGHT + constants.FANOUT_SPACING * #self.cards
+    else
+        return constants.CARD_WIDTH, constants.CARD_HEIGHT
+    end
+end
+
 function Stack:transfer_to(dst, count)
     for i = #self.cards - count + 1, #self.cards do
         dst:push(self.cards[i])
@@ -42,6 +57,8 @@ function Stack:transfer_to(dst, count)
     for _ = #dst.cards - count + 1, #dst.cards do
         self:pop()
     end
+    self.sx, self.sy = self:dimensions()
+    dst.sx, dst.sy = dst:dimensions()
 end
 
 function Stack:flip_last()
@@ -51,4 +68,7 @@ function Stack:flip_last()
     end
 end
 
-return { Card, Stack }
+return {
+    Card = Card,
+    Stack = Stack,
+}
