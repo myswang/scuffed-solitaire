@@ -1,13 +1,3 @@
-local Action = {}
-Action.__index = Action
-
-function Action:new(kind, args)
-    local obj = setmetatable({}, self)
-    obj.kind = kind
-    obj.args = args
-    return obj
-end
-
 local Log = {}
 Log.__index = Log
 
@@ -43,7 +33,4 @@ function Log:redo()
     end
 end
 
-return {
-    Action = Action,
-    Log = Log,
-}
+return Log

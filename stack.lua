@@ -1,14 +1,4 @@
 local constants = require("constants")
-local Card = {}
-Card.__index = Card
-
-function Card:new(rank, suit, visible)
-    local obj = setmetatable({}, self)
-    obj.rank = rank
-    obj.suit = suit
-    obj.visible = visible
-    return obj
-end
 
 local Stack = {}
 Stack.__index = Stack
@@ -59,7 +49,4 @@ function Stack:flip_last()
     end
 end
 
-return {
-    Card = Card,
-    Stack = Stack,
-}
+return Stack
