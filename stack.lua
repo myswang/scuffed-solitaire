@@ -5,10 +5,10 @@ Stack.__index = Stack
 
 function Stack:new(x, y, fanout)
     local obj = setmetatable({}, self)
-    obj.x = x
-    obj.y = y
-    obj.fanout = fanout
+    obj.x, obj.y = x, y
     obj.sx, obj.sy = self.dimensions(self)
+    obj.fanout = fanout
+    obj.fanout_side = false
     obj.visible = true
     obj.cards = {}
     return obj
@@ -24,8 +24,13 @@ end
 
 function Stack:dimensions()
     if self.fanout then
-        return constants.CARD_WIDTH,
-        constants.CARD_HEIGHT + constants.FANOUT_SPACING * (#self.cards - 1)
+        if self.fanout_side then
+            return constants.CARD_WIDTH + constants.FANOUT_SPACING * (#self.cards - 1),
+            constants.CARD_HEIGHT
+        else
+            return constants.CARD_WIDTH,
+            constants.CARD_HEIGHT + constants.FANOUT_SPACING * (#self.cards - 1)
+        end
     else
         return constants.CARD_WIDTH, constants.CARD_HEIGHT
     end
