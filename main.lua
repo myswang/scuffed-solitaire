@@ -6,7 +6,7 @@ local Log = require("log")
 
 local renderer = Render:new()
 local blank = { rank=12, suit=4, visible=true }
-local game_log, cur_transaction, cards, stock, foundation, tableau, stacks, cur_stack, prev_stack
+local game_log, cur_transaction, cards, stock, foundation, tableau, stacks, cur_stack, prev_stack, point
 
 local function restart_game()
     renderer = Render:new()
@@ -222,23 +222,27 @@ end
 
 function love.mousepressed(x, y, button)
     if button ~= 1 then return end
-    local point = { x=x, y=y, sx=0, sy=0 }
+    local p = { x=x, y=y, sx=0, sy=0 }
 
-    if util.colliding(point, stock[1]) then
+    if util.colliding(p, stock[1]) then
         deal_cards()
         apply_transaction(cur_transaction, false)
         game_log:add(cur_transaction)
         cur_transaction = {}
     else
+        point = p
+    end
+end
+
+function love.mousemoved(_, _, dx, dy)
+    if point ~= nil and not cur_stack.visible then
         local src, count = grab_stack(point)
         if src ~= nil then
             table.insert(cur_transaction, { kind="move", args={src, cur_stack, count} })
             apply_transaction(cur_transaction, false)
         end
     end
-end
 
-function love.mousemoved(_, _, dx, dy)
     if cur_stack.visible then
         cur_stack.x = cur_stack.x + dx
         cur_stack.y = cur_stack.y + dy
@@ -246,7 +250,10 @@ function love.mousemoved(_, _, dx, dy)
 end
 
 function love.mousereleased(_, _, button)
-    if button ~= 1 or not cur_stack.visible then return end
+    if button ~= 1 or not cur_stack.visible then
+        point = nil
+        return
+    end
     local dst, count = place_stack()
     if dst ~= nil then
         local action = { kind="move", args={cur_stack, dst, count} }
@@ -264,6 +271,7 @@ function love.mousereleased(_, _, button)
     cur_stack.visible = false
     cur_transaction = {}
     prev_stack = nil
+    point = nil
 end
 
 function love.keypressed(key)
