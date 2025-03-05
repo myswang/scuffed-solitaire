@@ -218,7 +218,6 @@ end
 
 function love.update(dt)
     if last_click and love.timer.getTime() - last_click >= 0.20 then
-        print("timer expired")
         point = nil
         last_click = nil
     end
