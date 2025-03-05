@@ -126,9 +126,9 @@ local function place_stack()
         elseif kind == "tableau" and stack ~= prev_stack then
             local first = cur_stack:get_first()
             local last = stack:get_last()
-            if (#stack.cards == 0 and first.rank == 12)
+            if first and ((#stack.cards == 0 and first.rank == 12)
                 or (#stack.cards > 0 and last.rank == first.rank + 1
-                    and (math.abs(last.suit - first.suit) % 2 == 1)) then
+                    and (math.abs(last.suit - first.suit) % 2 == 1))) then
                 return stack, #cur_stack.cards
             end
         end
