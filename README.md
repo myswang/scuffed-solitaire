@@ -25,7 +25,7 @@ love scuffed-solitaire
 
 - Undo/New game buttons
 - ~Three card deals~ (Done, implemented with `constants.THREE_CARD_HAND`)
-- Double-click to automatically place cards in the foundation
+- ~Double-click to automatically place cards in the foundation~ (Done)
 - Further optimizations (WIP)
 
 ## Credits
