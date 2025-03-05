@@ -6,7 +6,7 @@ local Log = require("log")
 
 local renderer = Render:new()
 local blank = { rank = 12, suit = 4, visible = true }
-local game_log, cur_transaction, cards, stock, foundation, tableau, stacks, cur_stack, prev_stack, point
+local game_log, cur_transaction, cards, stock, foundation, tableau, stacks, cur_stack, prev_stack, point, last_click
 
 local function restart_game()
     renderer = Render:new()
@@ -18,6 +18,7 @@ local function restart_game()
     tableau = {}
     cur_stack = Stack:new(0, 0, true)
     cur_stack.visible = false
+    last_click = nil
 
     -- TODO: remove these for loops that basically all do the same thing
     for i = 0, 1 do
@@ -85,7 +86,7 @@ local function grab_stack()
                 count = #stack.cards - largest_idx + 1
 
                 if (stack ~= stock[2] and #stack.cards > 0 and stack.cards[largest_idx].visible)
-                or (stack == stock[2] and c.THREE_CARD_HAND and count == 1) then
+                    or (stack == stock[2] and c.THREE_CARD_HAND and count == 1) then
                     cur_stack.visible = true
                     prev_stack = stack
                     cur_stack.x, cur_stack.y = lx, ly
@@ -203,6 +204,15 @@ function love.load()
     restart_game()
 end
 
+function love.update(dt)
+    if last_click and love.timer.getTime() - last_click >= 0.20 then
+        print("timer expired")
+        point = nil
+        last_click = nil
+    end
+end
+
+-- TODO: refactor out copied code and simplify
 function love.mousepressed(x, y, button)
     if button ~= 1 then return end
     local p = { x = x, y = y, sx = 0, sy = 0 }
@@ -214,6 +224,34 @@ function love.mousepressed(x, y, button)
         cur_transaction = {}
     else
         point = p
+        if not last_click then
+            last_click = love.timer.getTime()
+        elseif love.timer.getTime() - last_click < 0.20 then
+            local src, count = grab_stack()
+            if src ~= nil and count == 1 then
+                for _, dst in ipairs(foundation) do
+                    local src_card = src:get_last()
+                    local dst_card = dst:get_last()
+
+                    if (src_card and #dst.cards == 0 and src_card.rank == 0)
+                    or (src_card and dst_card and src_card.suit == dst_card.suit and src_card.rank == dst_card.rank + 1) then
+                        local action = { kind = "move", args = { src, dst, 1 } }
+                        apply_action(action, false)
+                        table.insert(cur_transaction, action)
+                        if #src.cards > 0 and not src:get_last().visible then
+                            action = { kind = "flip", args = { prev_stack } }
+                            apply_action(action, false)
+                            table.insert(cur_transaction, action)
+                        end
+                        game_log:add(cur_transaction)
+                        cur_transaction = {}
+                        break
+                    end
+                end
+            end
+            point = nil
+            last_click = nil
+        end
     end
 end
 
