@@ -3,14 +3,14 @@ local constants = require("constants")
 local Stack = {}
 Stack.__index = Stack
 
-function Stack:new(x, y, fanout)
+function Stack:new(x, y, fanout, fanout_count)
     local obj = setmetatable({}, self)
     obj.x, obj.y = x, y
-    obj.sx, obj.sy = self.dimensions(self)
     obj.fanout = fanout
-    obj.fanout_side = false
+    obj.fanout_count = fanout_count or math.huge
     obj.visible = true
     obj.cards = {}
+    obj.sx, obj.sy = self.dimensions(obj)
     return obj
 end
 
@@ -23,16 +23,16 @@ function Stack:get_last()
 end
 
 function Stack:dimensions()
+    local count = math.min(self.fanout_count, #self.cards)
+    if count < 1 then
+        count = 1
+    end
     if self.fanout then
-        if self.fanout_side then
-            return constants.CARD_WIDTH + constants.FANOUT_SPACING * (#self.cards - 1),
-            constants.CARD_HEIGHT
-        else
-            return constants.CARD_WIDTH,
-            constants.CARD_HEIGHT + constants.FANOUT_SPACING * (#self.cards - 1)
-        end
+        return constants.CARD_WIDTH,
+        constants.CARD_HEIGHT + constants.FANOUT_SPACING * (count - 1)
     else
-        return constants.CARD_WIDTH, constants.CARD_HEIGHT
+        return constants.CARD_WIDTH + constants.FANOUT_SPACING * (count - 1),
+        constants.CARD_HEIGHT
     end
 end
 

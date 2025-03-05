@@ -34,20 +34,16 @@ end
 
 function Render:add_stack(stack)
     if stack == nil or not stack.visible then return end
-    if stack.fanout and stack.fanout_side then
-        local count = 3
-        if #stack.cards < count then
-            count = #stack.cards
+    local count = math.min(stack.fanout_count, #stack.cards)
+
+    if stack.fanout then
+        for i = 1, count do
+            self:add_card(stack.cards[#stack.cards-count+i], stack.x, stack.y + (i-1) * constants.FANOUT_SPACING)
         end
+    else
         for i = 1, count do
             self:add_card(stack.cards[#stack.cards-count+i], stack.x + (i-1) * constants.FANOUT_SPACING, stack.y)
         end
-    elseif stack.fanout then
-        for i, card in ipairs(stack.cards) do
-            self:add_card(card, stack.x, stack.y + (i-1) * constants.FANOUT_SPACING)
-        end
-    else
-        self:add_card(stack:get_last(), stack.x, stack.y)
     end
 end
 

@@ -5,7 +5,7 @@ local util = require("util")
 local Log = require("log")
 
 local renderer = Render:new()
-local blank = { rank=12, suit=4, visible=true }
+local blank = { rank = 12, suit = 4, visible = true }
 local game_log, cur_transaction, cards, stock, foundation, tableau, stacks, cur_stack, prev_stack, point
 
 local function restart_game()
@@ -21,25 +21,24 @@ local function restart_game()
 
     -- TODO: remove these for loops that basically all do the same thing
     for i = 0, 1 do
-        table.insert(stock, Stack:new(10 + (c.CARD_WIDTH+c.STACK_SPACING)*i, 10, false))
+        table.insert(stock, Stack:new(10 + (c.CARD_WIDTH + c.STACK_SPACING) * i, 10, false, 1))
     end
     for i = 3, 6 do
-        table.insert(foundation, Stack:new(10 + (c.CARD_WIDTH+c.STACK_SPACING)*i, 10, false))
+        table.insert(foundation, Stack:new(10 + (c.CARD_WIDTH + c.STACK_SPACING) * i, 10, false, 1))
     end
     for i = 0, 6 do
-        table.insert(tableau, Stack:new(10 + (c.CARD_WIDTH+c.STACK_SPACING)*i, 15 + c.CARD_HEIGHT, true))
+        table.insert(tableau, Stack:new(10 + (c.CARD_WIDTH + c.STACK_SPACING) * i, 15 + c.CARD_HEIGHT, true))
     end
 
-    stacks = { stock=stock, foundation=foundation, tableau=tableau }
+    stacks = { stock = stock, foundation = foundation, tableau = tableau }
 
     if c.THREE_CARD_HAND then
-        stock[2].fanout = true
-        stock[2].fanout_side = true
+        stock[2].fanout_count = 3
     end
 
     for suit = 0, 3 do
         for rank = 0, 12 do
-            table.insert(cards, { rank=rank, suit=suit, visible=false })
+            table.insert(cards, { rank = rank, suit = suit, visible = false })
         end
     end
     -- Fisher-Yates shuffle
@@ -65,50 +64,34 @@ local function redeal(stack1, stack2)
     stack1.cards = {}
 end
 
--- TODO: this function needs to be cleaned up
-local function grab_stack(point)
+local function grab_stack()
     for _, stack_group in pairs(stacks) do
         for _, stack in ipairs(stack_group) do
             if stack ~= stock[1] and util.colliding(point, stack) then
-                if stack == stock[2] and c.THREE_CARD_HAND then
-                    local count = 3
-                    if #stack.cards < count then
-                        count = #stack.cards
-                    end
-                    local card_x, card_y = stack.x + (count - 1) * c.FANOUT_SPACING, stack.y
-                    local bb = { x=card_x, y=card_y, sx=c.CARD_WIDTH, sy=c.CARD_HEIGHT }
-                    if util.colliding(point, bb) and #stack.cards > 0 then
-                        cur_stack.visible = true
-                        prev_stack = stack
-                        cur_stack.x, cur_stack.y = card_x, card_y
-                        return stack, 1
-                    end
-                    return nil
-                else
-                    local largest_idx = 1
+                local largest_idx = 1
+                local lx, ly
+                local count = math.min(stack.fanout_count, #stack.cards)
+                for i = 1, count do
+                    local card_x, card_y = stack.x + (i - 1) * c.FANOUT_SPACING, stack.y
                     if stack.fanout then
-                        for i, _ in ipairs(stack.cards) do
-                            local card_x, card_y =  stack.x, stack.y + (i-1) * c.FANOUT_SPACING
-                            local bb = { x=card_x, y=card_y, sx=c.CARD_WIDTH, sy=c.CARD_HEIGHT }
-                            if util.colliding(point, bb) then
-                                largest_idx = i
-                            end
-                        end
-                    else
-                        largest_idx = #stack.cards
+                        card_x, card_y = stack.x, stack.y + (i - 1) * c.FANOUT_SPACING
                     end
-                    if #stack.cards > 0 and largest_idx ~= 0 and stack.cards[largest_idx].visible then
-                        cur_stack.visible = true
-                        prev_stack = stack
-                        local count = #stack.cards - largest_idx + 1
-                        cur_stack.x, cur_stack.y = stack.x, stack.y
-                        if stack.fanout then
-                            cur_stack.y = stack.y + (#stack.cards-count) * c.FANOUT_SPACING
-                        end
-                        return stack, count
+                    local bb = { x = card_x, y = card_y, sx = c.CARD_WIDTH, sy = c.CARD_HEIGHT }
+                    if util.colliding(point, bb) then
+                        largest_idx = #stack.cards - count + i
+                        lx, ly = card_x, card_y
                     end
-                    return nil
                 end
+                count = #stack.cards - largest_idx + 1
+
+                if (stack ~= stock[2] and #stack.cards > 0 and stack.cards[largest_idx].visible)
+                or (stack == stock[2] and c.THREE_CARD_HAND and count == 1) then
+                    cur_stack.visible = true
+                    prev_stack = stack
+                    cur_stack.x, cur_stack.y = lx, ly
+                    return stack, count
+                end
+                return nil
             end
         end
     end
@@ -121,7 +104,7 @@ local function place_stack()
         if key ~= "stock" then
             for _, stack in ipairs(stack_group) do
                 if util.colliding(cur_stack, stack) then
-                    table.insert(candidates, {util.distance(cur_stack, stack), key, stack})
+                    table.insert(candidates, { util.distance(cur_stack, stack), key, stack })
                 end
             end
         end
@@ -136,15 +119,15 @@ local function place_stack()
             local first = cur_stack:get_first()
             local last = stack:get_last()
             if (#stack.cards == 0 and first.rank == 0)
-            or (#stack.cards > 0 and first.rank == last.rank + 1 and first.suit == last.suit) then
+                or (#stack.cards > 0 and first.rank == last.rank + 1 and first.suit == last.suit) then
                 return stack, 1
             end
         elseif kind == "tableau" and stack ~= prev_stack then
             local first = cur_stack:get_first()
             local last = stack:get_last()
             if (#stack.cards == 0 and first.rank == 12)
-            or (#stack.cards > 0 and last.rank == first.rank+1
-                and (math.abs(last.suit - first.suit) % 2 == 1)) then
+                or (#stack.cards > 0 and last.rank == first.rank + 1
+                    and (math.abs(last.suit - first.suit) % 2 == 1)) then
                 return stack, #cur_stack.cards
             end
         end
@@ -160,18 +143,18 @@ local function deal_cards()
                 count = #stock[1].cards
             end
             for _ = 1, count do
-                table.insert(cur_transaction, { kind="move", args={ stock[1], stock[2], 1 } })
-                table.insert(cur_transaction, { kind="flip", args={ stock[2] } })
+                table.insert(cur_transaction, { kind = "move", args = { stock[1], stock[2], 1 } })
+                table.insert(cur_transaction, { kind = "flip", args = { stock[2] } })
             end
         else
-            table.insert(cur_transaction, { kind="redeal", args={ stock[2], stock[1] }})
+            table.insert(cur_transaction, { kind = "redeal", args = { stock[2], stock[1] } })
         end
     else
         if #stock[1].cards > 0 then
-            table.insert(cur_transaction, { kind="move", args={ stock[1], stock[2], 1 } })
-            table.insert(cur_transaction, { kind="flip", args={ stock[2] } })
+            table.insert(cur_transaction, { kind = "move", args = { stock[1], stock[2], 1 } })
+            table.insert(cur_transaction, { kind = "flip", args = { stock[2] } })
         else
-            table.insert(cur_transaction, { kind="redeal", args={ stock[2], stock[1] } })
+            table.insert(cur_transaction, { kind = "redeal", args = { stock[2], stock[1] } })
         end
     end
 end
@@ -216,13 +199,13 @@ end
 function love.load()
     love.window.setTitle("Scuffed Solitaire")
     love.window.setMode(637, 600)
-    love.graphics.setBackgroundColor(0, 99/255, 0)
+    love.graphics.setBackgroundColor(0, 99 / 255, 0)
     restart_game()
 end
 
 function love.mousepressed(x, y, button)
     if button ~= 1 then return end
-    local p = { x=x, y=y, sx=0, sy=0 }
+    local p = { x = x, y = y, sx = 0, sy = 0 }
 
     if util.colliding(p, stock[1]) then
         deal_cards()
@@ -236,10 +219,12 @@ end
 
 function love.mousemoved(_, _, dx, dy)
     if point ~= nil and not cur_stack.visible then
-        local src, count = grab_stack(point)
+        local src, count = grab_stack()
         if src ~= nil then
-            table.insert(cur_transaction, { kind="move", args={src, cur_stack, count} })
+            table.insert(cur_transaction, { kind = "move", args = { src, cur_stack, count } })
             apply_transaction(cur_transaction, false)
+        else
+            point = nil
         end
     end
 
@@ -256,11 +241,11 @@ function love.mousereleased(_, _, button)
     end
     local dst, count = place_stack()
     if dst ~= nil then
-        local action = { kind="move", args={cur_stack, dst, count} }
+        local action = { kind = "move", args = { cur_stack, dst, count } }
         apply_action(action, false)
         table.insert(cur_transaction, action)
         if #prev_stack.cards > 0 and not prev_stack:get_last().visible then
-            action = { kind="flip", args={prev_stack} }
+            action = { kind = "flip", args = { prev_stack } }
             apply_action(action, false)
             table.insert(cur_transaction, action)
         end
