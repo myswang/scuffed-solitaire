@@ -197,6 +197,18 @@ local function apply_transaction(transaction, rollback)
     end
 end
 
+local function apply_move_flip(src, fsrc, dst, count)
+    local action = { kind = "move", args = { src, dst, count } }
+    apply_action(action, false)
+    table.insert(cur_transaction, action)
+    if #fsrc.cards > 0 and not fsrc:get_last().visible then
+        action = { kind = "flip", args = { prev_stack } }
+        apply_action(action, false)
+        table.insert(cur_transaction, action)
+    end
+    game_log:add(cur_transaction)
+end
+
 function love.load()
     love.window.setTitle("Scuffed Solitaire")
     love.window.setMode(637, 600)
@@ -235,15 +247,7 @@ function love.mousepressed(x, y, button)
 
                     if (src_card and #dst.cards == 0 and src_card.rank == 0)
                     or (src_card and dst_card and src_card.suit == dst_card.suit and src_card.rank == dst_card.rank + 1) then
-                        local action = { kind = "move", args = { src, dst, 1 } }
-                        apply_action(action, false)
-                        table.insert(cur_transaction, action)
-                        if #src.cards > 0 and not src:get_last().visible then
-                            action = { kind = "flip", args = { prev_stack } }
-                            apply_action(action, false)
-                            table.insert(cur_transaction, action)
-                        end
-                        game_log:add(cur_transaction)
+                        apply_move_flip(src, src, dst, count)
                         cur_transaction = {}
                         break
                     end
@@ -279,15 +283,7 @@ function love.mousereleased(_, _, button)
     end
     local dst, count = place_stack()
     if dst ~= nil then
-        local action = { kind = "move", args = { cur_stack, dst, count } }
-        apply_action(action, false)
-        table.insert(cur_transaction, action)
-        if #prev_stack.cards > 0 and not prev_stack:get_last().visible then
-            action = { kind = "flip", args = { prev_stack } }
-            apply_action(action, false)
-            table.insert(cur_transaction, action)
-        end
-        game_log:add(cur_transaction)
+        apply_move_flip(cur_stack, prev_stack, dst, count)
     else
         apply_transaction(cur_transaction, true)
     end
