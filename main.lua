@@ -86,7 +86,7 @@ local function grab_stack()
                 count = #stack.cards - largest_idx + 1
 
                 if (stack ~= stock[2] and #stack.cards > 0 and stack.cards[largest_idx].visible)
-                    or (stack == stock[2] and c.THREE_CARD_HAND and count == 1) then
+                    or (stack == stock[2] and count == 1) then
                     cur_stack.visible = true
                     prev_stack = stack
                     cur_stack.x, cur_stack.y = lx, ly
