@@ -13,7 +13,7 @@ local game_log, cur_transaction
 -- game state
 local cards, stock, foundation, tableau, stacks, score
 -- player state
-local cur_stack, prev_stack, point, last_click, timer
+local cur_stack, prev_stack, prev_kind, point, last_click, timer
 -- ui
 local status_bar, buttons
 
@@ -48,9 +48,9 @@ local function apply_action(action, rollback)
         end
     elseif kind == "score" then
         if not rollback then
-            score = score + 1
+            score = score + args[1]
         else
-            score = score - 1
+            score = score - args[1]
         end
     end
 end
@@ -87,6 +87,8 @@ local function restart_game()
     tableau = {}
     cur_stack = Stack:new(0, 0, true)
     cur_stack.visible = false
+    prev_stack = nil
+    prev_kind = nil
     last_click = nil
 
     -- TODO: clean up the ui setup code
@@ -139,7 +141,7 @@ local function restart_game()
 end
 
 local function grab_stack()
-    for _, stack_group in pairs(stacks) do
+    for key, stack_group in pairs(stacks) do
         for _, stack in ipairs(stack_group) do
             if stack ~= stock[1] and util.colliding(point, stack) then
                 local largest_idx = 1
@@ -162,6 +164,7 @@ local function grab_stack()
                     or (stack == stock[2] and count == 1) then
                     cur_stack.visible = true
                     prev_stack = stack
+                    prev_kind = key
                     cur_stack.x, cur_stack.y = lx, ly
                     return stack, count
                 end
@@ -194,7 +197,7 @@ local function place_stack()
             local last = stack:get_last()
             if (#stack.cards == 0 and first.rank == 0)
                 or (#stack.cards > 0 and first.rank == last.rank + 1 and first.suit == last.suit) then
-                local action = { kind="score", args={} }
+                local action = { kind="score", args={1} }
                 apply_action(action, false)
                 table.insert(cur_transaction, action)
                 return stack, 1
@@ -205,6 +208,11 @@ local function place_stack()
             if first and ((#stack.cards == 0 and first.rank == 12)
                 or (#stack.cards > 0 and last.rank == first.rank + 1
                     and (math.abs(last.suit - first.suit) % 2 == 1))) then
+                if prev_kind == "foundation" then
+                    local action = { kind="score", args={-1} }
+                    apply_action(action, false)
+                    table.insert(cur_transaction, action)
+                end
                 return stack, #cur_stack.cards
             end
         end
@@ -301,7 +309,7 @@ function love.mousepressed(x, y, button)
                     if (src_card and #dst.cards == 0 and src_card.rank == 0)
                     or (src_card and dst_card and src_card.suit == dst_card.suit and src_card.rank == dst_card.rank + 1) then
                         apply_move_flip(src, src, dst, count)
-                        local action = { kind="score", args={} }
+                        local action = { kind="score", args={1} }
                         table.insert(cur_transaction, action)
                         apply_action(action, false)
                         cur_transaction = {}
@@ -346,6 +354,7 @@ function love.mousereleased(_, _, button)
     cur_stack.visible = false
     cur_transaction = {}
     prev_stack = nil
+    prev_kind = nil
     point = nil
 end
 
