@@ -3,10 +3,19 @@ local Render = require("render")
 local c = require("constants")
 local util = require("util")
 local Log = require("log")
+local Rect = require("ui.rect")
+local Text = require("ui.text")
 
 local renderer = Render:new()
 local blank = { rank = 12, suit = 4, visible = true }
-local game_log, cur_transaction, cards, stock, foundation, tableau, stacks, cur_stack, prev_stack, point, last_click
+-- transaction management
+local game_log, cur_transaction
+-- game state
+local cards, stock, foundation, tableau, stacks, score
+-- player state
+local cur_stack, prev_stack, point, last_click, timer
+-- ui
+local status_bar
 
 local function restart_game()
     renderer = Render:new()
@@ -19,6 +28,11 @@ local function restart_game()
     cur_stack = Stack:new(0, 0, true)
     cur_stack.visible = false
     last_click = nil
+    status_bar = Rect:new(0, 570, 637, 30)
+    status_bar:add_sub(Text:new(6, 7))
+    status_bar:add_sub(Text:new(400, 7))
+    score = 0
+    timer = 0
 
     -- TODO: remove these for loops that basically all do the same thing
     for i = 0, 1 do
@@ -63,6 +77,49 @@ local function redeal(stack1, stack2)
         table.insert(stack2.cards, stack1.cards[i])
     end
     stack1.cards = {}
+end
+
+local function apply_action(action, rollback)
+    local kind = action.kind
+    local args = action.args
+
+    if kind == "move" then
+        local stack1, stack2, count = args[1], args[2], args[3]
+        if not rollback then
+            stack1:transfer_to(stack2, count)
+        else
+            stack2:transfer_to(stack1, count)
+        end
+    elseif kind == "flip" then
+        local stack = args[1]
+        stack:flip_last()
+    elseif kind == "redeal" then
+        local stack1, stack2 = args[1], args[2]
+        if not rollback then
+            redeal(stack1, stack2)
+        else
+            redeal(stack2, stack1)
+        end
+    elseif kind == "score" then
+        if not rollback then
+            score = score + 1
+        else
+            score = score - 1
+        end
+    end
+end
+
+local function apply_transaction(transaction, rollback)
+    if transaction == nil then return end
+    if not rollback then
+        for i = 1, #transaction do
+            apply_action(transaction[i], rollback)
+        end
+    else
+        for i = #transaction, 1, -1 do
+            apply_action(transaction[i], rollback)
+        end
+    end
 end
 
 local function grab_stack()
@@ -121,6 +178,9 @@ local function place_stack()
             local last = stack:get_last()
             if (#stack.cards == 0 and first.rank == 0)
                 or (#stack.cards > 0 and first.rank == last.rank + 1 and first.suit == last.suit) then
+                local action = { kind="score", args={} }
+                apply_action(action, false)
+                table.insert(cur_transaction, action)
                 return stack, 1
             end
         elseif kind == "tableau" and stack ~= prev_stack then
@@ -160,43 +220,6 @@ local function deal_cards()
     end
 end
 
-local function apply_action(action, rollback)
-    local kind = action.kind
-    local args = action.args
-
-    if kind == "move" then
-        local stack1, stack2, count = args[1], args[2], args[3]
-        if not rollback then
-            stack1:transfer_to(stack2, count)
-        else
-            stack2:transfer_to(stack1, count)
-        end
-    elseif kind == "flip" then
-        local stack = args[1]
-        stack:flip_last()
-    elseif kind == "redeal" then
-        local stack1, stack2 = args[1], args[2]
-        if not rollback then
-            redeal(stack1, stack2)
-        else
-            redeal(stack2, stack1)
-        end
-    end
-end
-
-local function apply_transaction(transaction, rollback)
-    if transaction == nil then return end
-    if not rollback then
-        for i = 1, #transaction do
-            apply_action(transaction[i], rollback)
-        end
-    else
-        for i = #transaction, 1, -1 do
-            apply_action(transaction[i], rollback)
-        end
-    end
-end
-
 local function apply_move_flip(src, fsrc, dst, count)
     local action = { kind = "move", args = { src, dst, count } }
     apply_action(action, false)
@@ -220,9 +243,18 @@ function love.update(dt)
     if last_click and love.timer.getTime() - last_click >= 0.20 then
         last_click = nil
     end
+    -- update timer
+    if #game_log.log > 0 then
+        timer = timer + dt
+    end
+    -- update status bar
+    status_bar.subs[1].text = "Stock left: "..#stock[1].cards
+    local hours = string.format("%02d", math.floor((timer / 3600) % 24))
+    local minutes = string.format("%02d", math.floor((timer / 60) % 60))
+    local seconds = string.format("%02d", math.floor(timer % 60))
+    status_bar.subs[2].text = "Time: "..hours..":"..minutes..":"..seconds.."    Score: "..score
 end
 
--- TODO: refactor out copied code and simplify
 function love.mousepressed(x, y, button)
     if button ~= 1 then return end
     local p = { x = x, y = y, sx = 0, sy = 0 }
@@ -246,6 +278,9 @@ function love.mousepressed(x, y, button)
                     if (src_card and #dst.cards == 0 and src_card.rank == 0)
                     or (src_card and dst_card and src_card.suit == dst_card.suit and src_card.rank == dst_card.rank + 1) then
                         apply_move_flip(src, src, dst, count)
+                        local action = { kind="score", args={} }
+                        table.insert(cur_transaction, action)
+                        apply_action(action, false)
                         cur_transaction = {}
                         break
                     end
@@ -317,4 +352,6 @@ function love.draw()
 
     renderer:add_stack(cur_stack)
     love.graphics.draw(renderer.batch)
+
+    status_bar:render()
 end
