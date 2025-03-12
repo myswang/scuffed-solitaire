@@ -23,7 +23,7 @@ love scuffed-solitaire
 
 ## TODO
 
-- Undo/New game buttons
+- Undo/New game buttons (WIP)
 - ~Three card deals~ (Done, implemented with `constants.THREE_CARD_HAND`)
 - ~Double-click to automatically place cards in the foundation~ (Done)
 - Further optimizations (WIP)

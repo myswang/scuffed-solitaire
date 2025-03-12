@@ -15,61 +15,7 @@ local cards, stock, foundation, tableau, stacks, score
 -- player state
 local cur_stack, prev_stack, point, last_click, timer
 -- ui
-local status_bar
-
-local function restart_game()
-    renderer = Render:new()
-    game_log = Log:new()
-    cur_transaction = {}
-    cards = {}
-    stock = {}
-    foundation = {}
-    tableau = {}
-    cur_stack = Stack:new(0, 0, true)
-    cur_stack.visible = false
-    last_click = nil
-    status_bar = Rect:new(0, 570, 637, 30)
-    status_bar:add_sub(Text:new(6, 7))
-    status_bar:add_sub(Text:new(400, 7))
-    score = 0
-    timer = 0
-
-    -- TODO: remove these for loops that basically all do the same thing
-    for i = 0, 1 do
-        table.insert(stock, Stack:new(10 + (c.CARD_WIDTH + c.STACK_SPACING) * i, 10, false, 1))
-    end
-    for i = 3, 6 do
-        table.insert(foundation, Stack:new(10 + (c.CARD_WIDTH + c.STACK_SPACING) * i, 10, false, 1))
-    end
-    for i = 0, 6 do
-        table.insert(tableau, Stack:new(10 + (c.CARD_WIDTH + c.STACK_SPACING) * i, 15 + c.CARD_HEIGHT, true))
-    end
-
-    stacks = { stock = stock, foundation = foundation, tableau = tableau }
-
-    if c.THREE_CARD_HAND then
-        stock[2].fanout_count = 3
-    end
-
-    for suit = 0, 3 do
-        for rank = 0, 12 do
-            table.insert(cards, { rank = rank, suit = suit, visible = false })
-        end
-    end
-    -- Fisher-Yates shuffle
-    math.randomseed(os.time() * os.clock() * 1000000)
-    for i = #cards, 2, -1 do
-        local j = math.random(i)
-        cards[i], cards[j] = cards[j], cards[i]
-    end
-
-    stock[1].cards = cards
-
-    for i, stack in ipairs(tableau) do
-        stock[1]:transfer_to(stack, i)
-        stack:get_last().visible = true
-    end
-end
+local status_bar, buttons
 
 local function redeal(stack1, stack2)
     for i = #stack1.cards, 1, -1 do
@@ -119,6 +65,76 @@ local function apply_transaction(transaction, rollback)
         for i = #transaction, 1, -1 do
             apply_action(transaction[i], rollback)
         end
+    end
+end
+
+local function add_button(x, y, sx, sy, text, click_handler)
+    local button = Rect:new(x, y, sx, sy)
+    local button_text = Text:new(6, 6)
+    button_text.text = text
+    button:add_sub(button_text)
+    button:set_click_handler(click_handler)
+    return button
+end
+
+local function restart_game()
+    renderer = Render:new()
+    game_log = Log:new()
+    cur_transaction = {}
+    cards = {}
+    stock = {}
+    foundation = {}
+    tableau = {}
+    cur_stack = Stack:new(0, 0, true)
+    cur_stack.visible = false
+    last_click = nil
+
+    -- TODO: clean up the ui setup code
+    status_bar = Rect:new(0, 620, 637, 30)
+    status_bar:add_sub(Text:new(6, 7))
+    status_bar:add_sub(Text:new(400, 7))
+    score = 0
+    timer = 0
+
+    buttons = {}
+    table.insert(buttons, add_button(5, 5, 50, 30, "New", restart_game))
+    table.insert(buttons, add_button(60, 5, 50, 30, "<----", function() apply_transaction(game_log:undo(), true) end))
+    table.insert(buttons, add_button(115, 5, 50, 30, "---->", function() apply_transaction(game_log:redo(), false) end))
+
+    -- TODO: remove these for loops that basically all do the same thing
+    for i = 0, 1 do
+        table.insert(stock, Stack:new(10 + (c.CARD_WIDTH + c.STACK_SPACING) * i, 40, false, 1))
+    end
+    for i = 3, 6 do
+        table.insert(foundation, Stack:new(10 + (c.CARD_WIDTH + c.STACK_SPACING) * i, 40, false, 1))
+    end
+    for i = 0, 6 do
+        table.insert(tableau, Stack:new(10 + (c.CARD_WIDTH + c.STACK_SPACING) * i, 45 + c.CARD_HEIGHT, true))
+    end
+
+    stacks = { stock = stock, foundation = foundation, tableau = tableau }
+
+    if c.THREE_CARD_HAND then
+        stock[2].fanout_count = 3
+    end
+
+    for suit = 0, 3 do
+        for rank = 0, 12 do
+            table.insert(cards, { rank = rank, suit = suit, visible = false })
+        end
+    end
+    -- Fisher-Yates shuffle
+    math.randomseed(os.time() * os.clock() * 1000000)
+    for i = #cards, 2, -1 do
+        local j = math.random(i)
+        cards[i], cards[j] = cards[j], cards[i]
+    end
+
+    stock[1].cards = cards
+
+    for i, stack in ipairs(tableau) do
+        stock[1]:transfer_to(stack, i)
+        stack:get_last().visible = true
     end
 end
 
@@ -234,7 +250,7 @@ end
 
 function love.load()
     love.window.setTitle("Scuffed Solitaire")
-    love.window.setMode(637, 600)
+    love.window.setMode(637, 650)
     love.graphics.setBackgroundColor(0, 99 / 255, 0)
     restart_game()
 end
@@ -258,6 +274,13 @@ end
 function love.mousepressed(x, y, button)
     if button ~= 1 then return end
     local p = { x = x, y = y, sx = 0, sy = 0 }
+
+    for _, ui_button in ipairs(buttons) do
+        if util.colliding(p, ui_button) then
+            ui_button.click_handler()
+            return
+        end
+    end
 
     if util.colliding(p, stock[1]) then
         deal_cards()
@@ -352,6 +375,10 @@ function love.draw()
 
     renderer:add_stack(cur_stack)
     love.graphics.draw(renderer.batch)
+
+    for _, button in ipairs(buttons) do
+        button:render()
+    end
 
     status_bar:render()
 end
