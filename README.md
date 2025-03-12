@@ -30,4 +30,5 @@ love scuffed-solitaire
 
 ## Credits
 
-The playing card texture atlas was sourced here: https://www.spriters-resource.com/pc_computer/solitaire/sheet/107016/
+- This project was inspired by the wonderful [AisleRiot Solitaire](https://wiki.gnome.org/Apps(2f)Aisleriot.html) collection of card games.
+- The playing card texture atlas was sourced here: https://www.spriters-resource.com/pc_computer/solitaire/sheet/107016/
